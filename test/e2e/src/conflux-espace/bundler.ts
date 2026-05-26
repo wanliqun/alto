@@ -44,7 +44,12 @@ export const startConfluxEspaceBundler = async ({
                 ...process.env,
                 ALTO_ENTRYPOINTS: entryPoints.join(","),
                 ALTO_RPC_URL: env.rpcUrl,
-                ALTO_SEND_TRANSACTION_RPC_URL: env.sendTransactionRpcUrl ?? "",
+                ...(env.sendTransactionRpcUrl
+                    ? {
+                          ALTO_SEND_TRANSACTION_RPC_URL:
+                              env.sendTransactionRpcUrl
+                      }
+                    : {}),
                 ALTO_UTILITY_PRIVATE_KEY: env.bundlerPrivateKey,
                 ALTO_EXECUTOR_PRIVATE_KEYS: env.executorPrivateKeys,
                 ALTO_REFILLING_WALLETS: "false",

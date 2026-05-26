@@ -1,11 +1,11 @@
 import { join } from "node:path"
 import { config as loadDotEnv } from "dotenv"
+import { startConfluxEspaceBundler } from "./src/conflux-espace/bundler.js"
+import { getConfluxEspaceChain } from "./src/conflux-espace/chain.js"
 import {
     createConfluxEspaceClients,
-    ensureConfluxEspaceV08CoreContracts
+    ensureConfluxEspaceCoreContracts
 } from "./src/conflux-espace/contracts.js"
-import { getConfluxEspaceChain } from "./src/conflux-espace/chain.js"
-import { startConfluxEspaceBundler } from "./src/conflux-espace/bundler.js"
 import { getConfluxEspaceDemoEnv } from "./src/conflux-espace/env.js"
 
 // biome-ignore lint/style/noDefaultExport: vitest globalSetup requires default
@@ -25,24 +25,22 @@ export default async function setup({ provide }) {
         privateKey: env.bundlerPrivateKey
     })
 
-    const deployed = await ensureConfluxEspaceV08CoreContracts({
+    const deployed = await ensureConfluxEspaceCoreContracts({
         publicClient,
-        walletClient
+        walletClient,
+        versions: env.entryPointVersions
     })
 
     const bundler = await startConfluxEspaceBundler({
         env,
-        entryPoint: deployed.entryPoint
+        entryPoints: deployed.map(({ entryPoint }) => entryPoint)
     })
 
     provide("confluxEspaceRpc", env.rpcUrl)
     provide("confluxEspaceAltoRpc", bundler.altoRpc)
     provide("confluxEspaceChainId", chain.id)
-    provide("confluxEspaceEntryPointV08", deployed.entryPoint)
-    provide(
-        "confluxEspaceSimpleAccountFactoryV08",
-        deployed.simpleAccountFactory
-    )
+    provide("confluxEspaceEntryPointVersions", env.entryPointVersions)
+    provide("confluxEspaceCoreContracts", deployed)
     provide("confluxEspaceOwnerPrivateKey", env.ownerPrivateKey)
     provide("confluxEspaceBundlerPrivateKey", env.bundlerPrivateKey)
 
@@ -56,8 +54,12 @@ declare module "vitest" {
         confluxEspaceRpc: string
         confluxEspaceAltoRpc: string
         confluxEspaceChainId: number
-        confluxEspaceEntryPointV08: `0x${string}`
-        confluxEspaceSimpleAccountFactoryV08: `0x${string}`
+        confluxEspaceEntryPointVersions: Array<"0.6" | "0.7" | "0.8">
+        confluxEspaceCoreContracts: Array<{
+            version: "0.6" | "0.7" | "0.8"
+            entryPoint: `0x${string}`
+            simpleAccountFactory: `0x${string}`
+        }>
         confluxEspaceOwnerPrivateKey: `0x${string}`
         confluxEspaceBundlerPrivateKey: `0x${string}`
     }

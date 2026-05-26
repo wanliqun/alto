@@ -1,4 +1,5 @@
 import {
+    http,
     type Address,
     type Chain,
     type Hex,
@@ -6,18 +7,21 @@ import {
     type WalletClient,
     createPublicClient,
     createWalletClient,
-    getContract,
-    http
+    getContract
 } from "viem"
 import { privateKeyToAccount } from "viem/accounts"
-import { SimpleAccountFactoryAbi } from "../../../../src/types/contracts/index.js"
+import { SimpleAccountFactoryAbi } from "../../../../src/types/contracts/SimpleAccountFactory.js"
 import {
-    DETERMINISTIC_DEPLOYER_ADDRESS,
-    ENTRY_POINT_V08_ADDRESS,
-    ENTRY_POINT_V08_CREATE_CALL,
-    SIMPLE_ACCOUNT_FACTORY_V08_ADDRESS,
-    SIMPLE_ACCOUNT_FACTORY_V08_CREATE_CALL
+    CONFLUX_ESPACE_CORE_CONTRACTS,
+    DETERMINISTIC_DEPLOYER_ADDRESS
 } from "./constants.js"
+import type { ConfluxEspaceEntryPointVersion } from "./env.js"
+
+export type ConfluxEspaceCoreContracts = {
+    version: ConfluxEspaceEntryPointVersion
+    entryPoint: Address
+    simpleAccountFactory: Address
+}
 
 const DETERMINISTIC_DEPLOYER_TRANSACTION =
     "0xf8a58V85174876e80V830186aV8V80b853604580600e600039806000f350fe7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600V81602V82378035828234f58015156039578182fd5b8V82525050506014600cf31ba02222222222222222222222222222222222222222222222222222222222222222a02222222222222222222222222222222222222222222222222222222222222222".replaceAll(
@@ -118,49 +122,62 @@ export const createConfluxEspaceClients = ({
     }
 }
 
-export const ensureConfluxEspaceV08CoreContracts = async ({
+export const ensureConfluxEspaceCoreContracts = async ({
     publicClient,
-    walletClient
+    walletClient,
+    versions
 }: {
     publicClient: PublicClient
     walletClient: WalletClient
-}) => {
+    versions: ConfluxEspaceEntryPointVersion[]
+}): Promise<ConfluxEspaceCoreContracts[]> => {
     await ensureDeterministicDeployer({
         publicClient,
         walletClient
     })
 
-    await ensureCreateCallDeployment({
-        publicClient,
-        walletClient,
-        address: ENTRY_POINT_V08_ADDRESS,
-        createCall: ENTRY_POINT_V08_CREATE_CALL,
-        label: "EntryPoint v0.8"
-    })
+    const deployed: ConfluxEspaceCoreContracts[] = []
 
-    await ensureCreateCallDeployment({
-        publicClient,
-        walletClient,
-        address: SIMPLE_ACCOUNT_FACTORY_V08_ADDRESS,
-        createCall: SIMPLE_ACCOUNT_FACTORY_V08_CREATE_CALL,
-        label: "SimpleAccountFactory v0.8"
-    })
+    for (const version of versions) {
+        const contracts = CONFLUX_ESPACE_CORE_CONTRACTS[version]
 
-    return {
-        entryPoint: ENTRY_POINT_V08_ADDRESS,
-        simpleAccountFactory: SIMPLE_ACCOUNT_FACTORY_V08_ADDRESS
+        await ensureCreateCallDeployment({
+            publicClient,
+            walletClient,
+            address: contracts.entryPoint,
+            createCall: contracts.entryPointCreateCall,
+            label: `EntryPoint v${version}`
+        })
+
+        await ensureCreateCallDeployment({
+            publicClient,
+            walletClient,
+            address: contracts.simpleAccountFactory,
+            createCall: contracts.simpleAccountFactoryCreateCall,
+            label: `SimpleAccountFactory v${version}`
+        })
+
+        deployed.push({
+            version,
+            entryPoint: contracts.entryPoint,
+            simpleAccountFactory: contracts.simpleAccountFactory
+        })
     }
+
+    return deployed
 }
 
 export const getPredictedSimpleAccountAddress = async ({
     publicClient,
+    factoryAddress,
     owner
 }: {
     publicClient: PublicClient
+    factoryAddress: Address
     owner: Address
 }) => {
     const simpleAccountFactory = getContract({
-        address: SIMPLE_ACCOUNT_FACTORY_V08_ADDRESS,
+        address: factoryAddress,
         abi: SimpleAccountFactoryAbi,
         client: publicClient
     })

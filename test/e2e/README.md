@@ -28,8 +28,8 @@ pnpm run test
 This repo also includes a remote smoke test that:
 
 - Ensures the deterministic deployer exists on Conflux eSpace Testnet
-- Deploys `EntryPoint` v0.8 and `SimpleAccountFactory` v0.8 to their
-  deterministic addresses when missing
+- Deploys the selected `EntryPoint` and `SimpleAccountFactory` versions to
+  their deterministic addresses when missing
 - Starts a local Alto instance against the remote testnet RPC
 - Funds the predicted SimpleAccount address
 - Sends the first `eth_sendUserOperation`, which deploys the SimpleAccount and
@@ -47,6 +47,9 @@ CONFLUX_ESPACE_TESTNET_BUNDLER_PRIVATE_KEY=...
 
 Notes:
 
+- `CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS` is optional and defaults to
+  `0.8`. Use a comma-separated list like `0.6,0.7,0.8` to cover multiple
+  EntryPoint versions.
 - `CONFLUX_ESPACE_TESTNET_EXECUTOR_PRIVATE_KEYS` is optional. If omitted, the
   bundler key is reused as the single executor key.
 - `CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY` is optional. If omitted, the test
@@ -64,6 +67,12 @@ From the repo root:
 
 ```bash
 pnpm run test:conflux-espace
+```
+
+Run selected EntryPoint versions:
+
+```bash
+pnpm run test:conflux-espace --entrypoint-versions=0.6,0.7
 ```
 
 From `test/e2e` directly:

@@ -1,11 +1,16 @@
 import { generatePrivateKey } from "viem/accounts"
 
+export type ConfluxEspaceEntryPointVersion = "0.6" | "0.7" | "0.8"
+
+const PRIVATE_KEY_REGEX = /^0x[a-fA-F0-9]{64}$/
+
 export type ConfluxEspaceDemoEnv = {
     rpcUrl: string
     sendTransactionRpcUrl?: string
     bundlerPrivateKey: `0x${string}`
     executorPrivateKeys: string
     ownerPrivateKey: `0x${string}`
+    entryPointVersions: ConfluxEspaceEntryPointVersion[]
     port: number
     blockTimeMs: number
     logLevel: "trace" | "debug" | "info" | "warn" | "error" | "fatal"
@@ -59,7 +64,7 @@ const parsePrivateKey = ({
         return undefined
     }
 
-    if (!/^0x[a-fA-F0-9]{64}$/.test(value)) {
+    if (!PRIVATE_KEY_REGEX.test(value)) {
         throw new Error(`Invalid private key environment variable: ${name}`)
     }
 
@@ -129,6 +134,37 @@ const parseLogLevel = (name: string): ConfluxEspaceDemoEnv["logLevel"] => {
     }
 }
 
+const parseEntryPointVersions = (): ConfluxEspaceEntryPointVersion[] => {
+    const raw =
+        process.env.npm_config_entrypoint_versions?.trim() ||
+        process.env.npm_config_entrypoint_version?.trim() ||
+        process.env.CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS?.trim() ||
+        "0.8"
+
+    const versions = raw
+        .split(",")
+        .map((version) => version.trim())
+        .filter(Boolean)
+
+    if (versions.length === 0) {
+        throw new Error(
+            "At least one Conflux eSpace EntryPoint version is required"
+        )
+    }
+
+    const uniqueVersions = [...new Set(versions)]
+
+    for (const version of uniqueVersions) {
+        if (version !== "0.6" && version !== "0.7" && version !== "0.8") {
+            throw new Error(
+                `Invalid Conflux eSpace EntryPoint version: ${version}. Supported versions: 0.6, 0.7, 0.8`
+            )
+        }
+    }
+
+    return uniqueVersions as ConfluxEspaceEntryPointVersion[]
+}
+
 export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
     if (cachedEnv) {
         return cachedEnv
@@ -160,6 +196,7 @@ export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
             parsePrivateKey({
                 name: "CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY"
             }) ?? generatePrivateKey(),
+        entryPointVersions: parseEntryPointVersions(),
         port: parseNumber({
             name: "CONFLUX_ESPACE_TESTNET_PORT",
             fallback: 4337,

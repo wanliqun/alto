@@ -43,14 +43,21 @@ pnpm test # note: foundry must be installed on the machine for this to work
 ## Conflux eSpace testnet demo
 
 A dedicated remote smoke test for Conflux eSpace Testnet is available under
-`test/e2e`. It bootstraps the deterministic ERC-4337 v0.8 stack, starts Alto
-against the remote RPC, and verifies that a `SimpleAccount` can be deployed and
-used through `eth_sendUserOperation`.
+`test/e2e`. It bootstraps the selected deterministic ERC-4337 stack, starts
+Alto against the remote RPC, and verifies that a `SimpleAccount` can be
+deployed and used through `eth_sendUserOperation`. The default EntryPoint
+version is v0.8.
 
 Run it with:
 
 ```bash
 pnpm run test:conflux-espace
+```
+
+To cover specific EntryPoint versions:
+
+```bash
+pnpm run test:conflux-espace --entrypoint-versions=0.6,0.7,0.8
 ```
 
 Environment setup is documented in

@@ -1,20 +1,34 @@
 import { resolve } from "node:path"
-import { execa, type ExecaChildProcess } from "execa"
+import { execa } from "execa"
 import type { Address } from "viem"
 import type { ConfluxEspaceDemoEnv } from "./env.js"
 
 type BundlerProcess = {
     altoRpc: string
-    process: ExecaChildProcess
+    process: ReturnType<typeof execa>
     stop: () => Promise<void>
+}
+
+const appendProcessOutput = (lines: string[], data: Buffer | string) => {
+    lines.push(
+        ...data
+            .toString()
+            .split(/\r?\n/)
+            .map((line) => line.trimEnd())
+            .filter(Boolean)
+    )
+
+    if (lines.length > 80) {
+        lines.splice(0, lines.length - 80)
+    }
 }
 
 export const startConfluxEspaceBundler = async ({
     env,
-    entryPoint
+    entryPoints
 }: {
     env: ConfluxEspaceDemoEnv
-    entryPoint: Address
+    entryPoints: Address[]
 }): Promise<BundlerProcess> => {
     const repoRoot = resolve(__dirname, "../../../..")
     const tsconfigPath = resolve(repoRoot, "src/tsconfig.json")
@@ -28,7 +42,7 @@ export const startConfluxEspaceBundler = async ({
             cwd: repoRoot,
             env: {
                 ...process.env,
-                ALTO_ENTRYPOINTS: entryPoint,
+                ALTO_ENTRYPOINTS: entryPoints.join(","),
                 ALTO_RPC_URL: env.rpcUrl,
                 ALTO_SEND_TRANSACTION_RPC_URL: env.sendTransactionRpcUrl ?? "",
                 ALTO_UTILITY_PRIVATE_KEY: env.bundlerPrivateKey,
@@ -58,11 +72,20 @@ export const startConfluxEspaceBundler = async ({
     )
 
     const started = new Promise<void>((resolvePromise, rejectPromise) => {
+        const output: string[] = []
         const timeout = setTimeout(() => {
-            rejectPromise(new Error("Timed out waiting for bundler startup"))
+            rejectPromise(
+                new Error(
+                    `Timed out waiting for bundler startup.\n\nRecent Alto output:\n${output.join(
+                        "\n"
+                    )}`
+                )
+            )
         }, 180_000)
 
         const onStdout = (data: Buffer | string) => {
+            appendProcessOutput(output, data)
+
             const message = data.toString()
             if (message.includes("Server listening at")) {
                 clearTimeout(timeout)
@@ -70,13 +93,25 @@ export const startConfluxEspaceBundler = async ({
             }
         }
 
-        const onExit = () => {
+        const onStderr = (data: Buffer | string) => {
+            appendProcessOutput(output, data)
+        }
+
+        const onExit = (code: number | null, signal: string | null) => {
             clearTimeout(timeout)
-            rejectPromise(new Error("Bundler exited before becoming ready"))
+            rejectPromise(
+                new Error(
+                    `Bundler exited before becoming ready${
+                        code !== null ? ` with code ${code}` : ""
+                    }${
+                        signal ? ` and signal ${signal}` : ""
+                    }.\n\nRecent Alto output:\n${output.join("\n")}`
+                )
+            )
         }
 
         child.stdout?.on("data", onStdout)
-        child.stderr?.on("data", () => {})
+        child.stderr?.on("data", onStderr)
         child.once("exit", onExit)
     })
 

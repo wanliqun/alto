@@ -2,6 +2,11 @@ import { join } from "node:path"
 import { config } from "dotenv"
 import { defineConfig } from "vitest/config"
 
+const dotenvEnv =
+    config({
+        path: join(__dirname, ".env.conflux-espace-testnet")
+    }).parsed ?? {}
+
 export default defineConfig({
     test: {
         coverage: {
@@ -16,9 +21,8 @@ export default defineConfig({
             ]
         },
         env: {
-            ...config({
-                path: join(__dirname, ".env.conflux-espace-testnet")
-            }).parsed
+            ...dotenvEnv,
+            ...process.env
         },
         sequence: {
             concurrent: false

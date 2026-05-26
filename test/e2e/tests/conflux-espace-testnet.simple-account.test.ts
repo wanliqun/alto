@@ -14,21 +14,9 @@ import { generatePrivateKey, privateKeyToAccount } from "viem/accounts"
 import { expect, inject, test } from "vitest"
 import { MIN_SIMPLE_ACCOUNT_BALANCE } from "../src/conflux-espace/chain.js"
 import { getPredictedSimpleAccountAddress } from "../src/conflux-espace/contracts.js"
+import { getConfluxEspaceEntryPointVersions } from "../src/conflux-espace/env.js"
 
-const getSelectedEntryPointVersions = () => {
-    const raw =
-        process.env.npm_config_entrypoint_versions?.trim() ||
-        process.env.npm_config_entrypoint_version?.trim() ||
-        process.env.CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS?.trim() ||
-        "0.8"
-
-    return raw
-        .split(",")
-        .map((version) => version.trim())
-        .filter(Boolean) as Array<"0.6" | "0.7" | "0.8">
-}
-
-test.each(getSelectedEntryPointVersions())(
+test.each(getConfluxEspaceEntryPointVersions())(
     "conflux eSpace testnet can deploy and execute with EntryPoint v%s",
     async (entryPointVersion) => {
         const rpcUrl = inject("confluxEspaceRpc")

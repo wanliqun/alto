@@ -134,36 +134,37 @@ const parseLogLevel = (name: string): ConfluxEspaceDemoEnv["logLevel"] => {
     }
 }
 
-const parseEntryPointVersions = (): ConfluxEspaceEntryPointVersion[] => {
-    const raw =
-        process.env.npm_config_entrypoint_versions?.trim() ||
-        process.env.npm_config_entrypoint_version?.trim() ||
-        process.env.CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS?.trim() ||
-        "0.8"
+export const getConfluxEspaceEntryPointVersions =
+    (): ConfluxEspaceEntryPointVersion[] => {
+        const raw =
+            process.env.npm_config_entrypoint_versions?.trim() ||
+            process.env.npm_config_entrypoint_version?.trim() ||
+            process.env.CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS?.trim() ||
+            "0.8"
 
-    const versions = raw
-        .split(",")
-        .map((version) => version.trim())
-        .filter(Boolean)
+        const versions = raw
+            .split(",")
+            .map((version) => version.trim())
+            .filter(Boolean)
 
-    if (versions.length === 0) {
-        throw new Error(
-            "At least one Conflux eSpace EntryPoint version is required"
-        )
-    }
-
-    const uniqueVersions = [...new Set(versions)]
-
-    for (const version of uniqueVersions) {
-        if (version !== "0.6" && version !== "0.7" && version !== "0.8") {
+        if (versions.length === 0) {
             throw new Error(
-                `Invalid Conflux eSpace EntryPoint version: ${version}. Supported versions: 0.6, 0.7, 0.8`
+                "At least one Conflux eSpace EntryPoint version is required"
             )
         }
-    }
 
-    return uniqueVersions as ConfluxEspaceEntryPointVersion[]
-}
+        const uniqueVersions = [...new Set(versions)]
+
+        for (const version of uniqueVersions) {
+            if (version !== "0.6" && version !== "0.7" && version !== "0.8") {
+                throw new Error(
+                    `Invalid Conflux eSpace EntryPoint version: ${version}. Supported versions: 0.6, 0.7, 0.8`
+                )
+            }
+        }
+
+        return uniqueVersions as ConfluxEspaceEntryPointVersion[]
+    }
 
 export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
     if (cachedEnv) {
@@ -196,7 +197,7 @@ export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
             parsePrivateKey({
                 name: "CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY"
             }) ?? generatePrivateKey(),
-        entryPointVersions: parseEntryPointVersions(),
+        entryPointVersions: getConfluxEspaceEntryPointVersions(),
         port: parseNumber({
             name: "CONFLUX_ESPACE_TESTNET_PORT",
             fallback: 4337,

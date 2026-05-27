@@ -6,6 +6,7 @@ const PRIVATE_KEY_REGEX = /^0x[a-fA-F0-9]{64}$/
 
 export type ConfluxEspaceDemoEnv = {
     rpcUrl: string
+    altoRpcUrl?: string
     sendTransactionRpcUrl?: string
     bundlerPrivateKey: `0x${string}`
     executorPrivateKeys: string
@@ -186,6 +187,9 @@ export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
             name: "CONFLUX_ESPACE_TESTNET_RPC_URL",
             fallback: requireString("CONFLUX_ESPACE_TESTNET_RPC_URL")
         }) as string,
+        altoRpcUrl: parseUrl({
+            name: "CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL"
+        }),
         sendTransactionRpcUrl: parseUrl({
             name: "CONFLUX_ESPACE_TESTNET_SEND_TRANSACTION_RPC_URL"
         }),

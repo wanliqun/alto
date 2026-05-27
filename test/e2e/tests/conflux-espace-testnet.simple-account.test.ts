@@ -16,6 +16,84 @@ import { MIN_SIMPLE_ACCOUNT_BALANCE } from "../src/conflux-espace/chain.js"
 import { getPredictedSimpleAccountAddress } from "../src/conflux-espace/contracts.js"
 import { getConfluxEspaceEntryPointVersions } from "../src/conflux-espace/env.js"
 
+const callAltoRpc = async <T>({
+    altoRpc,
+    method,
+    params = []
+}: {
+    altoRpc: string
+    method: string
+    params?: unknown[]
+}): Promise<T> => {
+    const response = await fetch(altoRpc, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 4337,
+            method,
+            params
+        })
+    })
+
+    const payload = await response.json()
+
+    if (payload.error) {
+        throw new Error(
+            `${method} failed: ${JSON.stringify(payload.error, null, 2)}`
+        )
+    }
+
+    return payload.result as T
+}
+
+const tryCallAltoRpc = async <T>({
+    altoRpc,
+    method,
+    params
+}: {
+    altoRpc: string
+    method: string
+    params?: unknown[]
+}) => {
+    try {
+        return await callAltoRpc<T>({ altoRpc, method, params })
+    } catch (error) {
+        return {
+            error: error instanceof Error ? error.message : String(error)
+        }
+    }
+}
+
+const getUserOperationDiagnostics = async ({
+    altoRpc,
+    userOpHash
+}: {
+    altoRpc: string
+    userOpHash: `0x${string}`
+}) => ({
+    status: await tryCallAltoRpc({
+        altoRpc,
+        method: "pimlico_getUserOperationStatus",
+        params: [userOpHash]
+    }),
+    receipt: await tryCallAltoRpc({
+        altoRpc,
+        method: "eth_getUserOperationReceipt",
+        params: [userOpHash]
+    }),
+    supportedEntryPoints: await tryCallAltoRpc({
+        altoRpc,
+        method: "eth_supportedEntryPoints"
+    })
+})
+
+const shouldSendBundleNow = () =>
+    process.env.CONFLUX_ESPACE_TESTNET_SEND_BUNDLE_NOW?.trim().toLowerCase() ===
+    "true"
+
 test.each(getConfluxEspaceEntryPointVersions())(
     "conflux eSpace testnet can deploy and execute with EntryPoint v%s",
     async (entryPointVersion) => {
@@ -137,9 +215,38 @@ test.each(getConfluxEspaceEntryPointVersions())(
             ]
         })
 
-        const receipt = await smartAccountClient.waitForUserOperationReceipt({
-            hash: userOpHash
-        })
+        if (shouldSendBundleNow()) {
+            await tryCallAltoRpc({
+                altoRpc,
+                method: "debug_bundler_sendBundleNow"
+            })
+        }
+
+        let receipt: Awaited<
+            ReturnType<typeof smartAccountClient.waitForUserOperationReceipt>
+        >
+        try {
+            receipt = await smartAccountClient.waitForUserOperationReceipt({
+                hash: userOpHash
+            })
+        } catch (error) {
+            const diagnostics = await getUserOperationDiagnostics({
+                altoRpc,
+                userOpHash
+            })
+
+            throw new Error(
+                [
+                    `Timed out waiting for user operation ${userOpHash}.`,
+                    `EntryPoint: ${entryPoint}`,
+                    `Alto RPC: ${altoRpc}`,
+                    `Diagnostics: ${JSON.stringify(diagnostics, null, 2)}`,
+                    `Original error: ${
+                        error instanceof Error ? error.message : String(error)
+                    }`
+                ].join("\n")
+            )
+        }
 
         expect(receipt.success).toBe(true)
         expect(receipt.entryPoint.toLowerCase()).toBe(entryPoint.toLowerCase())

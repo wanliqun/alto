@@ -30,7 +30,8 @@ This repo also includes a remote smoke test that:
 - Ensures the deterministic deployer exists on Conflux eSpace Testnet
 - Deploys the selected `EntryPoint` and `SimpleAccountFactory` versions to
   their deterministic addresses when missing
-- Starts a local Alto instance against the remote testnet RPC
+- Starts a local Alto instance against the remote testnet RPC, unless a remote
+  Alto RPC URL is configured
 - Funds the predicted SimpleAccount address
 - Sends the first `eth_sendUserOperation`, which deploys the SimpleAccount and
   executes a native token transfer
@@ -50,6 +51,12 @@ Notes:
 - `CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS` is optional and defaults to
   `0.8`. Use a comma-separated list like `0.6,0.7,0.8` to cover multiple
   EntryPoint versions.
+- `CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL` is optional. If set, the smoke test
+  uses that existing Alto RPC service and skips starting a local Alto process.
+  The remote Alto service must support the selected EntryPoint versions.
+- `CONFLUX_ESPACE_TESTNET_SEND_BUNDLE_NOW` is optional and defaults to `false`.
+  Set it to `true` when testing against an Alto service running in manual
+  bundle mode with debug endpoints enabled.
 - `CONFLUX_ESPACE_TESTNET_EXECUTOR_PRIVATE_KEYS` is optional. If omitted, the
   bundler key is reused as the single executor key.
 - `CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY` is optional. If omitted, the test
@@ -73,6 +80,12 @@ Run selected EntryPoint versions:
 
 ```bash
 pnpm run test:conflux-espace --entrypoint-versions=0.6,0.7
+```
+
+Run against an existing remote Alto service:
+
+```bash
+CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL=https://<your-alto-rpc> pnpm run test:conflux-espace
 ```
 
 From `test/e2e` directly:

@@ -31,13 +31,20 @@ export default async function setup({ provide }) {
         versions: env.entryPointVersions
     })
 
-    const bundler = await startConfluxEspaceBundler({
-        env,
-        entryPoints: deployed.map(({ entryPoint }) => entryPoint)
-    })
+    const bundler = env.altoRpcUrl
+        ? undefined
+        : await startConfluxEspaceBundler({
+              env,
+              entryPoints: deployed.map(({ entryPoint }) => entryPoint)
+          })
+    const altoRpc = env.altoRpcUrl ?? bundler?.altoRpc
+
+    if (!altoRpc) {
+        throw new Error("Missing Conflux eSpace Alto RPC URL")
+    }
 
     provide("confluxEspaceRpc", env.rpcUrl)
-    provide("confluxEspaceAltoRpc", bundler.altoRpc)
+    provide("confluxEspaceAltoRpc", altoRpc)
     provide("confluxEspaceChainId", chain.id)
     provide("confluxEspaceEntryPointVersions", env.entryPointVersions)
     provide("confluxEspaceCoreContracts", deployed)
@@ -45,7 +52,7 @@ export default async function setup({ provide }) {
     provide("confluxEspaceBundlerPrivateKey", env.bundlerPrivateKey)
 
     return async () => {
-        await bundler.stop()
+        await bundler?.stop()
     }
 }
 

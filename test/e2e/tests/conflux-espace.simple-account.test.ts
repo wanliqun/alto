@@ -90,16 +90,13 @@ const getUserOperationDiagnostics = async ({
     })
 })
 
-const shouldSendBundleNow = () =>
-    process.env.CONFLUX_ESPACE_TESTNET_SEND_BUNDLE_NOW?.trim().toLowerCase() ===
-    "true"
-
 test.each(getConfluxEspaceEntryPointVersions())(
-    "conflux eSpace testnet can deploy and execute with EntryPoint v%s",
+    "Conflux eSpace can deploy and execute with EntryPoint v%s",
     async (entryPointVersion) => {
         const rpcUrl = inject("confluxEspaceRpc")
         const altoRpc = inject("confluxEspaceAltoRpc")
         const chainId = inject("confluxEspaceChainId")
+        const chainName = inject("confluxEspaceChainName")
         const coreContracts = inject("confluxEspaceCoreContracts")
         const contracts = coreContracts.find(
             ({ version }) => version === entryPointVersion
@@ -117,7 +114,7 @@ test.each(getConfluxEspaceEntryPointVersions())(
 
         const chain = defineChain({
             id: chainId,
-            name: "Conflux eSpace Testnet",
+            name: chainName,
             nativeCurrency: {
                 name: "Conflux",
                 symbol: "CFX",
@@ -215,7 +212,7 @@ test.each(getConfluxEspaceEntryPointVersions())(
             ]
         })
 
-        if (shouldSendBundleNow()) {
+        if (inject("confluxEspaceSendBundleNow")) {
             await tryCallAltoRpc({
                 altoRpc,
                 method: "debug_bundler_sendBundleNow"
@@ -251,11 +248,27 @@ test.each(getConfluxEspaceEntryPointVersions())(
         expect(receipt.success).toBe(true)
         expect(receipt.entryPoint.toLowerCase()).toBe(entryPoint.toLowerCase())
 
-        const deployedCode = await publicClient.getBytecode({
-            address: account.address
+        const bundleReceipt = await publicClient.waitForTransactionReceipt({
+            hash: receipt.receipt.transactionHash,
+            confirmations: 2
         })
-        expect(deployedCode).toBeTruthy()
-        expect(deployedCode).not.toBe("0x")
+        const deployedCode = await publicClient.getBytecode({
+            address: account.address,
+            blockNumber: bundleReceipt.blockNumber
+        })
+
+        if (!deployedCode || deployedCode === "0x") {
+            throw new Error(
+                [
+                    `SimpleAccount ${account.address} has no bytecode after a successful user operation.`,
+                    `Chain ID: ${chainId}`,
+                    `EntryPoint: ${entryPoint}`,
+                    `User operation: ${userOpHash}`,
+                    `Bundle transaction: ${bundleReceipt.transactionHash}`,
+                    `Bundle block: ${bundleReceipt.blockNumber}`
+                ].join("\n")
+            )
+        }
 
         const recipientBalanceAfter = await publicClient.getBalance({
             address: recipient

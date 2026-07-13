@@ -11,12 +11,13 @@ import { getConfluxEspaceDemoEnv } from "./src/conflux-espace/env.js"
 // biome-ignore lint/style/noDefaultExport: vitest globalSetup requires default
 export default async function setup({ provide }) {
     loadDotEnv({
-        path: join(__dirname, ".env.conflux-espace-testnet")
+        path: join(__dirname, ".env.conflux-espace")
     })
 
     const env = getConfluxEspaceDemoEnv()
     const chain = await getConfluxEspaceChain({
-        rpcUrl: env.rpcUrl
+        rpcUrl: env.rpcUrl,
+        network: env.network
     })
 
     const { publicClient, walletClient } = createConfluxEspaceClients({
@@ -28,7 +29,8 @@ export default async function setup({ provide }) {
     const deployed = await ensureConfluxEspaceCoreContracts({
         publicClient,
         walletClient,
-        versions: env.entryPointVersions
+        versions: env.entryPointVersions,
+        deployMissing: env.deployContracts
     })
 
     const bundler = env.altoRpcUrl
@@ -46,10 +48,12 @@ export default async function setup({ provide }) {
     provide("confluxEspaceRpc", env.rpcUrl)
     provide("confluxEspaceAltoRpc", altoRpc)
     provide("confluxEspaceChainId", chain.id)
+    provide("confluxEspaceChainName", chain.name)
     provide("confluxEspaceEntryPointVersions", env.entryPointVersions)
     provide("confluxEspaceCoreContracts", deployed)
     provide("confluxEspaceOwnerPrivateKey", env.ownerPrivateKey)
     provide("confluxEspaceBundlerPrivateKey", env.bundlerPrivateKey)
+    provide("confluxEspaceSendBundleNow", env.sendBundleNow)
 
     return async () => {
         await bundler?.stop()
@@ -61,6 +65,7 @@ declare module "vitest" {
         confluxEspaceRpc: string
         confluxEspaceAltoRpc: string
         confluxEspaceChainId: number
+        confluxEspaceChainName: string
         confluxEspaceEntryPointVersions: Array<"0.6" | "0.7" | "0.8">
         confluxEspaceCoreContracts: Array<{
             version: "0.6" | "0.7" | "0.8"
@@ -69,5 +74,6 @@ declare module "vitest" {
         }>
         confluxEspaceOwnerPrivateKey: `0x${string}`
         confluxEspaceBundlerPrivateKey: `0x${string}`
+        confluxEspaceSendBundleNow: boolean
     }
 }

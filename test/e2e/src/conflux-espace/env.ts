@@ -1,10 +1,15 @@
 import { generatePrivateKey } from "viem/accounts"
+import {
+    type ConfluxEspaceNetwork,
+    getConfluxEspaceNetwork
+} from "./network.js"
 
 export type ConfluxEspaceEntryPointVersion = "0.6" | "0.7" | "0.8"
 
 const PRIVATE_KEY_REGEX = /^0x[a-fA-F0-9]{64}$/
 
 export type ConfluxEspaceDemoEnv = {
+    network: ConfluxEspaceNetwork
     rpcUrl: string
     altoRpcUrl?: string
     sendTransactionRpcUrl?: string
@@ -18,6 +23,8 @@ export type ConfluxEspaceDemoEnv = {
     safeMode: boolean
     balanceOverride: boolean
     codeOverrideSupport: boolean
+    deployContracts: boolean
+    sendBundleNow: boolean
 }
 
 let cachedEnv: ConfluxEspaceDemoEnv | undefined
@@ -140,7 +147,7 @@ export const getConfluxEspaceEntryPointVersions =
         const raw =
             process.env.npm_config_entrypoint_versions?.trim() ||
             process.env.npm_config_entrypoint_version?.trim() ||
-            process.env.CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS?.trim() ||
+            process.env.CONFLUX_ESPACE_ENTRYPOINT_VERSIONS?.trim() ||
             "0.8"
 
         const versions = raw
@@ -172,57 +179,71 @@ export const getConfluxEspaceDemoEnv = (): ConfluxEspaceDemoEnv => {
         return cachedEnv
     }
 
-    const bundlerPrivateKey = parsePrivateKey({
-        name: "CONFLUX_ESPACE_TESTNET_BUNDLER_PRIVATE_KEY"
-    })
+    const network = getConfluxEspaceNetwork()
+    const bundlerPrivateKeyName = "CONFLUX_ESPACE_BUNDLER_PRIVATE_KEY"
+    const bundlerPrivateKey = parsePrivateKey({ name: bundlerPrivateKeyName })
+    const ownerPrivateKeyName = "CONFLUX_ESPACE_OWNER_PRIVATE_KEY"
+    const ownerPrivateKey = parsePrivateKey({ name: ownerPrivateKeyName })
 
     if (!bundlerPrivateKey) {
         throw new Error(
-            "Missing required environment variable: CONFLUX_ESPACE_TESTNET_BUNDLER_PRIVATE_KEY"
+            `Missing required environment variable: ${bundlerPrivateKeyName}`
+        )
+    }
+
+    if (network === "mainnet" && !ownerPrivateKey) {
+        throw new Error(
+            `Missing required environment variable: ${ownerPrivateKeyName}. Mainnet tests require a reusable owner to avoid stranding funds in a throwaway account.`
         )
     }
 
     cachedEnv = {
+        network,
         rpcUrl: parseUrl({
-            name: "CONFLUX_ESPACE_TESTNET_RPC_URL",
-            fallback: requireString("CONFLUX_ESPACE_TESTNET_RPC_URL")
+            name: "CONFLUX_ESPACE_RPC_URL",
+            fallback: requireString("CONFLUX_ESPACE_RPC_URL")
         }) as string,
         altoRpcUrl: parseUrl({
-            name: "CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL"
+            name: "CONFLUX_ESPACE_ALTO_RPC_URL"
         }),
         sendTransactionRpcUrl: parseUrl({
-            name: "CONFLUX_ESPACE_TESTNET_SEND_TRANSACTION_RPC_URL"
+            name: "CONFLUX_ESPACE_SEND_TRANSACTION_RPC_URL"
         }),
         bundlerPrivateKey,
         executorPrivateKeys:
-            process.env.CONFLUX_ESPACE_TESTNET_EXECUTOR_PRIVATE_KEYS?.trim() ??
+            process.env.CONFLUX_ESPACE_EXECUTOR_PRIVATE_KEYS?.trim() ??
             bundlerPrivateKey,
-        ownerPrivateKey:
-            parsePrivateKey({
-                name: "CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY"
-            }) ?? generatePrivateKey(),
+        ownerPrivateKey: ownerPrivateKey ?? generatePrivateKey(),
         entryPointVersions: getConfluxEspaceEntryPointVersions(),
         port: parseNumber({
-            name: "CONFLUX_ESPACE_TESTNET_PORT",
+            name: "CONFLUX_ESPACE_PORT",
             fallback: 4337,
             min: 1
         }),
         blockTimeMs: parseNumber({
-            name: "CONFLUX_ESPACE_TESTNET_BLOCK_TIME_MS",
+            name: "CONFLUX_ESPACE_BLOCK_TIME_MS",
             fallback: 1_000,
             min: 100
         }),
-        logLevel: parseLogLevel("CONFLUX_ESPACE_TESTNET_LOG_LEVEL"),
+        logLevel: parseLogLevel("CONFLUX_ESPACE_LOG_LEVEL"),
         safeMode: parseBoolean({
-            name: "CONFLUX_ESPACE_TESTNET_SAFE_MODE",
+            name: "CONFLUX_ESPACE_SAFE_MODE",
             fallback: false
         }),
         balanceOverride: parseBoolean({
-            name: "CONFLUX_ESPACE_TESTNET_BALANCE_OVERRIDE",
+            name: "CONFLUX_ESPACE_BALANCE_OVERRIDE",
             fallback: false
         }),
         codeOverrideSupport: parseBoolean({
-            name: "CONFLUX_ESPACE_TESTNET_CODE_OVERRIDE_SUPPORT",
+            name: "CONFLUX_ESPACE_CODE_OVERRIDE_SUPPORT",
+            fallback: false
+        }),
+        deployContracts: parseBoolean({
+            name: "CONFLUX_ESPACE_DEPLOY_CONTRACTS",
+            fallback: network === "testnet"
+        }),
+        sendBundleNow: parseBoolean({
+            name: "CONFLUX_ESPACE_SEND_BUNDLE_NOW",
             fallback: false
         })
     }

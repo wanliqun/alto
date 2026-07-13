@@ -2,6 +2,7 @@ import { spawn } from "node:child_process"
 
 const passthroughArgs = []
 let entryPointVersions
+let network
 
 const args = process.argv.slice(2)
 
@@ -14,6 +15,17 @@ for (let index = 0; index < args.length; index++) {
 
     if (arg.startsWith("--entrypoint-versions=")) {
         entryPointVersions = arg.slice("--entrypoint-versions=".length)
+        continue
+    }
+
+    if (arg.startsWith("--network=")) {
+        network = arg.slice("--network=".length)
+        continue
+    }
+
+    if (arg === "--network") {
+        network = args[index + 1]
+        index++
         continue
     }
 
@@ -40,6 +52,9 @@ const child = spawn(
             ...process.env,
             ...(entryPointVersions
                 ? { npm_config_entrypoint_versions: entryPointVersions }
+                : {}),
+            ...(network !== undefined
+                ? { CONFLUX_ESPACE_NETWORK: network }
                 : {})
         }
     }

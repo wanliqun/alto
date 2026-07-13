@@ -42,10 +42,12 @@ const hasBytecode = async ({
 
 const ensureDeterministicDeployer = async ({
     publicClient,
-    walletClient
+    walletClient,
+    deployMissing
 }: {
     publicClient: PublicClient
     walletClient: WalletClient
+    deployMissing: boolean
 }) => {
     if (
         await hasBytecode({
@@ -54,6 +56,12 @@ const ensureDeterministicDeployer = async ({
         })
     ) {
         return
+    }
+
+    if (!deployMissing) {
+        throw new Error(
+            `Missing deterministic deployer at ${DETERMINISTIC_DEPLOYER_ADDRESS}. Set CONFLUX_ESPACE_DEPLOY_CONTRACTS=true to deploy it.`
+        )
     }
 
     const hash = await walletClient.sendRawTransaction({
@@ -68,16 +76,24 @@ const ensureCreateCallDeployment = async ({
     walletClient,
     address,
     createCall,
-    label
+    label,
+    deployMissing
 }: {
     publicClient: PublicClient
     walletClient: WalletClient
     address: Address
     createCall: Hex
     label: string
+    deployMissing: boolean
 }) => {
     if (await hasBytecode({ publicClient, address })) {
         return
+    }
+
+    if (!deployMissing) {
+        throw new Error(
+            `Missing ${label} at ${address}. Set CONFLUX_ESPACE_DEPLOY_CONTRACTS=true to deploy it.`
+        )
     }
 
     const hash = await walletClient.sendTransaction({
@@ -125,15 +141,18 @@ export const createConfluxEspaceClients = ({
 export const ensureConfluxEspaceCoreContracts = async ({
     publicClient,
     walletClient,
-    versions
+    versions,
+    deployMissing
 }: {
     publicClient: PublicClient
     walletClient: WalletClient
     versions: ConfluxEspaceEntryPointVersion[]
+    deployMissing: boolean
 }): Promise<ConfluxEspaceCoreContracts[]> => {
     await ensureDeterministicDeployer({
         publicClient,
-        walletClient
+        walletClient,
+        deployMissing
     })
 
     const deployed: ConfluxEspaceCoreContracts[] = []
@@ -146,7 +165,8 @@ export const ensureConfluxEspaceCoreContracts = async ({
             walletClient,
             address: contracts.entryPoint,
             createCall: contracts.entryPointCreateCall,
-            label: `EntryPoint v${version}`
+            label: `EntryPoint v${version}`,
+            deployMissing
         })
 
         await ensureCreateCallDeployment({
@@ -154,7 +174,8 @@ export const ensureConfluxEspaceCoreContracts = async ({
             walletClient,
             address: contracts.simpleAccountFactory,
             createCall: contracts.simpleAccountFactoryCreateCall,
-            label: `SimpleAccountFactory v${version}`
+            label: `SimpleAccountFactory v${version}`,
+            deployMissing
         })
 
         deployed.push({

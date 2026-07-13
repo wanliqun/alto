@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config"
 
 const dotenvEnv =
     config({
-        path: join(__dirname, ".env.conflux-espace-testnet")
+        path: join(__dirname, ".env.conflux-espace")
     }).parsed ?? {}
 
 export default defineConfig({
@@ -29,7 +29,7 @@ export default defineConfig({
         },
         fileParallelism: false,
         globalSetup: join(__dirname, "./conflux-espace.setup.ts"),
-        include: ["tests/conflux-espace-testnet.simple-account.test.ts"],
+        include: ["tests/conflux-espace.simple-account.test.ts"],
         environment: "node",
         testTimeout: 300_000,
         hookTimeout: 180_000

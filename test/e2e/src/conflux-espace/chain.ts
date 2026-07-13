@@ -1,28 +1,40 @@
 import {
+    http,
     type Chain,
     createPublicClient,
     defineChain,
-    http,
     parseEther
 } from "viem"
-import { CONFLUX_ESPACE_TESTNET_NAME } from "./constants.js"
+import {
+    type ConfluxEspaceNetwork,
+    getConfluxEspaceNetworkConfig
+} from "./network.js"
 
 export const MIN_SIMPLE_ACCOUNT_BALANCE = parseEther("0.05")
 
 export const getConfluxEspaceChain = async ({
-    rpcUrl
+    rpcUrl,
+    network
 }: {
     rpcUrl: string
+    network: ConfluxEspaceNetwork
 }): Promise<Chain> => {
     const probeClient = createPublicClient({
         transport: http(rpcUrl)
     })
 
     const chainId = await probeClient.getChainId()
+    const networkConfig = getConfluxEspaceNetworkConfig(network)
+
+    if (chainId !== networkConfig.chainId) {
+        throw new Error(
+            `${networkConfig.name} RPC returned chain ID ${chainId}; expected ${networkConfig.chainId}`
+        )
+    }
 
     return defineChain({
         id: chainId,
-        name: CONFLUX_ESPACE_TESTNET_NAME,
+        name: networkConfig.name,
         nativeCurrency: {
             name: "Conflux",
             symbol: "CFX",

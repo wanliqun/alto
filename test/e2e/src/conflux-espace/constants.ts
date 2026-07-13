@@ -9,8 +9,6 @@ import {
 } from "../../deploy-contracts/constants.js"
 import type { ConfluxEspaceEntryPointVersion } from "./env.js"
 
-export const CONFLUX_ESPACE_TESTNET_NAME = "Conflux eSpace Testnet"
-
 export const DETERMINISTIC_DEPLOYER_ADDRESS =
     "0x4e59b44847b379578588920ca78fbf26c0b4956c" satisfies Address
 

@@ -23,14 +23,15 @@ Run test cases
 pnpm run test
 ```
 
-## Conflux eSpace testnet demo
+## Conflux eSpace remote smoke test
 
-This repo also includes a remote smoke test that:
+This repo also includes a remote smoke test for Conflux eSpace Testnet and
+Mainnet that:
 
-- Ensures the deterministic deployer exists on Conflux eSpace Testnet
+- Ensures the deterministic deployer exists on the selected network
 - Deploys the selected `EntryPoint` and `SimpleAccountFactory` versions to
-  their deterministic addresses when missing
-- Starts a local Alto instance against the remote testnet RPC, unless a remote
+  their deterministic addresses when missing and deployment is enabled
+- Starts a local Alto instance against the remote network RPC, unless a remote
   Alto RPC URL is configured
 - Funds the predicted SimpleAccount address
 - Sends the first `eth_sendUserOperation`, which deploys the SimpleAccount and
@@ -38,35 +39,45 @@ This repo also includes a remote smoke test that:
 
 ### Environment
 
-Copy [`.env.conflux-espace-testnet.example`](./.env.conflux-espace-testnet.example)
-to `.env.conflux-espace-testnet` and fill in at least:
+Copy [`.env.conflux-espace.example`](./.env.conflux-espace.example) to
+`.env.conflux-espace`. Select `testnet` or `mainnet` with
+`CONFLUX_ESPACE_NETWORK`, then configure the matching RPC URL and keys. Mainnet
+requires a reusable owner private key so funds are not left in an account
+controlled by a discarded key:
 
 ```bash
-CONFLUX_ESPACE_TESTNET_RPC_URL=...
-CONFLUX_ESPACE_TESTNET_BUNDLER_PRIVATE_KEY=...
+CONFLUX_ESPACE_NETWORK=mainnet
+CONFLUX_ESPACE_RPC_URL=...
+CONFLUX_ESPACE_BUNDLER_PRIVATE_KEY=...
+CONFLUX_ESPACE_OWNER_PRIVATE_KEY=...
 ```
 
 Notes:
 
-- `CONFLUX_ESPACE_TESTNET_ENTRYPOINT_VERSIONS` is optional and defaults to
-  `0.8`. Use a comma-separated list like `0.6,0.7,0.8` to cover multiple
-  EntryPoint versions.
-- `CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL` is optional. If set, the smoke test
-  uses that existing Alto RPC service and skips starting a local Alto process.
-  The remote Alto service must support the selected EntryPoint versions.
-- `CONFLUX_ESPACE_TESTNET_SEND_BUNDLE_NOW` is optional and defaults to `false`.
-  Set it to `true` when testing against an Alto service running in manual
-  bundle mode with debug endpoints enabled.
-- `CONFLUX_ESPACE_TESTNET_EXECUTOR_PRIVATE_KEYS` is optional. If omitted, the
-  bundler key is reused as the single executor key.
-- `CONFLUX_ESPACE_TESTNET_OWNER_PRIVATE_KEY` is optional. If omitted, the test
-  generates a throwaway owner for the demo account.
-- The bundler key must hold enough native testnet gas to deploy contracts,
-  fund the demo account, and submit the bundle transaction.
+- The test rejects RPCs with a chain ID that does not match the selected
+  network: `71` for testnet and `1030` for mainnet.
+- `CONFLUX_ESPACE_ENTRYPOINT_VERSIONS` is optional and defaults to `0.8`. Use a
+  comma-separated list like `0.6,0.7,0.8` to cover multiple EntryPoint
+  versions.
+- `CONFLUX_ESPACE_ALTO_RPC_URL` is optional. If set, the smoke test uses that
+  existing Alto RPC service and skips starting a local Alto process. The
+  remote Alto service must support the selected EntryPoint versions.
+- `CONFLUX_ESPACE_SEND_BUNDLE_NOW` is optional and defaults to `false`. Set it
+  to `true` when testing against an Alto service running in manual bundle mode
+  with debug endpoints enabled.
+- `CONFLUX_ESPACE_EXECUTOR_PRIVATE_KEYS` is optional. If omitted, the bundler
+  key is reused as the single executor key.
+- `CONFLUX_ESPACE_OWNER_PRIVATE_KEY` is optional on testnet, where the test
+  generates a throwaway owner when omitted. It is required on mainnet.
+- `CONFLUX_ESPACE_DEPLOY_CONTRACTS` defaults to `true` on testnet and `false`
+  on mainnet. Mainnet therefore only validates existing deterministic
+  deployments unless deployment is explicitly enabled.
+- The bundler key must hold enough native CFX to fund the demo account and
+  submit the bundle transaction, plus contract deployment gas when enabled.
 - The demo defaults to `safe-mode=false`, `balance-override=false`, and
-  `code-override-support=false` because many public testnet RPCs do not expose
-  the full tracing/state-override surface area. If your RPC supports those
-  features, you can switch them back on in the env file.
+  `code-override-support=false` because many public RPCs do not expose the full
+  tracing/state-override surface area. If your RPC supports those features,
+  you can switch them back on in the env file.
 
 ### Run
 
@@ -74,6 +85,13 @@ From the repo root:
 
 ```bash
 pnpm run test:conflux-espace
+```
+
+The network normally comes from `.env.conflux-espace`. Override it for one run
+without editing the file with:
+
+```bash
+pnpm run test:conflux-espace --network=mainnet
 ```
 
 Run selected EntryPoint versions:
@@ -85,7 +103,7 @@ pnpm run test:conflux-espace --entrypoint-versions=0.6,0.7
 Run against an existing remote Alto service:
 
 ```bash
-CONFLUX_ESPACE_TESTNET_ALTO_RPC_URL=https://<your-alto-rpc> pnpm run test:conflux-espace
+CONFLUX_ESPACE_ALTO_RPC_URL=https://<your-alto-rpc> pnpm run test:conflux-espace
 ```
 
 From `test/e2e` directly:

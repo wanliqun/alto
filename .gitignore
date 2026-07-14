@@ -1,4 +1,6 @@
 .env
+test/e2e/.env.conflux-espace*
+!test/e2e/.env.conflux-espace.example
 package.lock
 node_modules
 .nyc
